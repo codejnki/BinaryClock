@@ -186,3 +186,7 @@ UpgradeLog*.htm
 FakesAssemblies/
 /Thumbs.db
 /Visual Micro
+
+# Visual Micro data
+Visual Micro/
+*/Visual Micro/
