@@ -1,5 +1,5 @@
 
-// button variables
+// These variables control the button state
 const int hourButton = 3;
 const int minuteButton = 2;
 int hourButtonState;
@@ -42,31 +42,33 @@ void setup()
 	// setup the buttons to read
 	pinMode(hourButton, INPUT);
 	pinMode(minuteButton, INPUT);
-
-	Serial.begin(9600);
-	Serial.println("Hello world");
 }
 
 void loop()
 {
 	unsigned long currentMillis = millis();
 
+	// read our buttons
 	int hourRead = digitalRead(hourButton);
 	int minuteRead = digitalRead(minuteButton);
 
 	if(hourRead != lastHourButtonState || minuteRead != lastMinButtonState)
 	{
+		// set the debounce
 		lastDebounceTime = currentMillis;
 	}
 
 	if((currentMillis - lastDebounceTime) > debounceDelay)
 	{
+		// something has been pressed and crossed the debounce threshold
 		if(hourRead != hourButtonState)
 		{
 			hourButtonState = hourRead;
 
 			if(hourButtonState == HIGH)
 			{
+				// increase the hour, reset the seconds, and set the new hour flag
+				// so that the hour light array is updated
 				hour++;
 				second = 0;
 				newHour = 1;
@@ -75,6 +77,8 @@ void loop()
 
 		if(minuteRead != minButtonState)
 		{
+			// increase the minute, reset the seconds, and set the new minute flag
+			// so that the minute array is updated
 			minButtonState = minuteRead;
 
 			if(minButtonState == HIGH)
@@ -87,14 +91,11 @@ void loop()
 	}
 
 	
-	// Serial.println(currentMillis);
 
 	if(currentMillis - previousMillis >= 1000) 
 	{
 		previousMillis = currentMillis;
 		second++;
-		//Serial.print("Second: ");
-		//Serial.println(second);
 	}
 	
 	if(second >= 60)
@@ -102,9 +103,6 @@ void loop()
 		minute++;
 		second = 0;
 		newMin = 1;
-
-		Serial.print("Minute: ");
-		Serial.println(minute);
 	}
 
 	if (minute >= 60)
@@ -112,11 +110,10 @@ void loop()
 		hour++;
 		minute = 0;
 		newHour = 1;
-
-		Serial.print("Hour: ");
-		Serial.println(hour);
 	}
 
+	// The clock currently reads in 12 hour format
+	// change here to go to 24 hour format
 	if (hour >= 13)
 	{
 		hour = 1;
@@ -125,16 +122,20 @@ void loop()
 		
 	if(newMin)
 	{
+		// if a new minute has happened update our light array 
 		convertToBitArray(minuteLightArray, minute);
 		newMin = 0;
 	}
 
 	if(newHour)
 	{
+		// if a new hour has happened update the light array
 		convertToBitArray(hourLightArray, hour);
 		newHour = 0;
 	}
 	
+	// so we converted the minutes in to a 32 bit length array
+	// but we only are going to need the last 6 array elements
 	int lightCounter = 26;
 	for (int i = 0; i < 6; i++)
 	{
@@ -142,6 +143,8 @@ void loop()
 		lightCounter++;
 	}
 
+	// we converted the hours in to a 32 bit length array
+	// but we are only going to need the last 4 array elements
 	lightCounter = 28;
 	for (int i = 0; i < 4; i++)
 	{
@@ -149,17 +152,19 @@ void loop()
 		lightCounter++;
 	}
 
+	// lastly capture the button state
 	lastHourButtonState = hourRead;
 	lastMinButtonState = minuteRead;
 }
 
 /**
-*	Converts a value in to a byte array
+*	Converts a value in to a 32 byte array
 *	
 *	
 *	byteArray The array (by ref) to fill
 * value The integer value to convert
-*
+* mostly copied from:
+* http://www.programmingsimplified.com/c/source-code/c-program-convert-decimal-to-binary
 **/
 void convertToBitArray(int* byteArray, int value)
 {
@@ -168,19 +173,19 @@ void convertToBitArray(int* byteArray, int value)
 
 	n = value;
 
-		for (c = 31; c >= 0; c--)
-		{
-			k = n >> c;
+	for (c = 31; c >= 0; c--)
+	{
+		k = n >> c;
 
-			if(k & 1)
-			{
-				byteArray[counter] = 1;
-			}
-			else
-			{
-				byteArray[counter] = 0;
-			}
-			
-			counter++;
+		if(k & 1)
+		{
+			byteArray[counter] = 1;
 		}
+		else
+		{
+			byteArray[counter] = 0;
+		}
+			
+		counter++;
+	}
 }
