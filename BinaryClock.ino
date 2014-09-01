@@ -1,16 +1,7 @@
-
-// These variables control the button state
-
+// much more compact version using a DS1307 RTC module
+// Wire library and RTC library are needed
 #include <Wire.h>
 #include <RTClib.h>
-const int hourButton = 3;
-const int minuteButton = 2;
-int hourButtonState;
-int minButtonState;
-int lastHourButtonState = LOW;
-int lastMinButtonState = LOW;
-long lastDebounceTime = 0;
-long debounceDelay = 50;
 
 // this array holds our hour led pin positions
 int hourLeds[4] = { 7, 6, 5, 4 };
@@ -20,16 +11,18 @@ int hourLightArray[32] = {0};
 int minuteLeds[6] = { 32 , 30, 28, 26, 24, 22 };
 int minuteLightArray[32] = {0};
 
-// time global variables
-long previousMillis = 0;
-int newMin = 0;
-int newHour = 1;
-int second = 0;
-int minute = 0;
-int hour = 12;
+// Create our RTC class
+RTC_DS1307 RTC;
 
 void setup()
 {
+	// Setup the RTC 
+	Wire.begin();
+	RTC.begin();
+
+	// adjusts the RTC to the current time
+	RTC.adjust(DateTime(__DATE__,__TIME__));
+
 	// initialize our hour pins
 	for (int i = 0; i < 4; i++)
 	{
@@ -41,102 +34,24 @@ void setup()
 	{
 		pinMode(minuteLeds[i], OUTPUT);
 	}
-
-	// setup the buttons to read
-	pinMode(hourButton, INPUT);
-	pinMode(minuteButton, INPUT);
 }
 
 void loop()
 {
-	unsigned long currentMillis = millis();
-
-	// read our buttons
-	int hourRead = digitalRead(hourButton);
-	int minuteRead = digitalRead(minuteButton);
-
-	if(hourRead != lastHourButtonState || minuteRead != lastMinButtonState)
-	{
-		// set the debounce
-		lastDebounceTime = currentMillis;
-	}
-
-	if((currentMillis - lastDebounceTime) > debounceDelay)
-	{
-		// something has been pressed and crossed the debounce threshold
-		if(hourRead != hourButtonState)
-		{
-			hourButtonState = hourRead;
-
-			if(hourButtonState == HIGH)
-			{
-				// increase the hour, reset the seconds, and set the new hour flag
-				// so that the hour light array is updated
-				hour++;
-				second = 0;
-				newHour = 1;
-			}
-		}
-
-		if(minuteRead != minButtonState)
-		{
-			// increase the minute, reset the seconds, and set the new minute flag
-			// so that the minute array is updated
-			minButtonState = minuteRead;
-
-			if(minButtonState == HIGH)
-			{
-				minute++;
-				second = 0;
-				newMin = 1;
-			}
-		}
-	}
-
-	
-
-	if(currentMillis - previousMillis >= 1000) 
-	{
-		previousMillis = currentMillis;
-		second++;
-	}
-	
-	if(second >= 60)
-	{
-		minute++;
-		second = 0;
-		newMin = 1;
-	}
-
-	if (minute >= 60)
-	{
-		hour++;
-		minute = 0;
-		newHour = 1;
-	}
+	DateTime now = RTC.now();
+	int hour = now.hour();
+	int minute = now.minute();
 
 	// The clock currently reads in 12 hour format
 	// change here to go to 24 hour format
 	if (hour >= 13)
 	{
-		hour = 1;
-		minute = 0;
+		hour = hour - 12;
 	}
 		
-	if(newMin)
-	{
-		// if a new minute has happened update our light array 
-		convertToBitArray(minuteLightArray, minute);
-		newMin = 0;
-	}
+	convertToBitArray(hourLightArray, hour);
+	convertToBitArray(minuteLightArray, minute);
 
-	if(newHour)
-	{
-		// if a new hour has happened update the light array
-		convertToBitArray(hourLightArray, hour);
-		newHour = 0;
-	}
-	
 	// so we converted the minutes in to a 32 bit length array
 	// but we only are going to need the last 6 array elements
 	int lightCounter = 26;
@@ -154,10 +69,6 @@ void loop()
 		digitalWrite(hourLeds[i], hourLightArray[lightCounter]);
 		lightCounter++;
 	}
-
-	// lastly capture the button state
-	lastHourButtonState = hourRead;
-	lastMinButtonState = minuteRead;
 }
 
 /**
