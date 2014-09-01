@@ -1,5 +1,8 @@
 
 // These variables control the button state
+
+#include <Wire.h>
+#include <RTClib.h>
 const int hourButton = 3;
 const int minuteButton = 2;
 int hourButtonState;
